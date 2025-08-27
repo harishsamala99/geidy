@@ -31,3 +31,10 @@ export interface SmsExplanation {
   };
   conclusion: string;
 }
+
+export interface NotificationDetails {
+  phone: string;
+  message: string;
+  status?: 'pending' | 'sent' | 'failed'; // optional, depends on how you track SMS
+  timestamp?: string; // e.g., when it was sent
+}
