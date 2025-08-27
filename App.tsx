@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useEffect, FormEvent, ReactNode } from 'react';
 import { HashRouter, Routes, Route, Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 
@@ -20,6 +22,7 @@ interface Cleaner {
 }
 
 interface Booking {
+  id: number; // Use a unique ID for each booking
   name: string;
   email: string;
   phone: string;
@@ -27,6 +30,7 @@ interface Booking {
   service: string;
   date: string;
   time: string;
+  status: 'Pending' | 'Confirmed';
 }
 
 // --- ICONS (as components) ---
@@ -74,6 +78,32 @@ const OfficeIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0v-4a2 2 0 012-2h10a2 2 0 012 2v4M8 11V9a4 4 0 118 0v2" />
     </svg>
 );
+
+const TrashIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" {...props}>
+        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" />
+    </svg>
+);
+
+const CheckCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" {...props}>
+        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+    </svg>
+);
+
+const PhoneIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" {...props}>
+        <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+    </svg>
+);
+
+const EnvelopeIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5" {...props}>
+    <path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" />
+    <path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" />
+  </svg>
+);
+
 
 // --- CONSTANTS (Data) ---
 
@@ -278,7 +308,7 @@ const ServicesPage = () => {
 };
 
 const BookingPage = () => {
-    const [formData, setFormData] = useState<Booking>({ name: '', email: '', phone: '', address: '', service: '', date: '', time: '' });
+    const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '', service: '', date: '', time: '' });
     const [submitted, setSubmitted] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     
@@ -299,14 +329,18 @@ const BookingPage = () => {
         e.preventDefault();
         setIsSubmitting(true);
 
-        // Simulate an API call and save to localStorage
         setTimeout(() => {
-            console.log("Form data submitted:", formData);
-            
             try {
                 const existingBookings: Booking[] = JSON.parse(localStorage.getItem('bookings') || '[]');
-                const newBookings = [...existingBookings, formData];
+                const newBooking: Booking = {
+                    ...formData,
+                    id: Date.now(), // Simple unique ID
+                    status: 'Pending',
+                };
+                const newBookings = [...existingBookings, newBooking];
                 localStorage.setItem('bookings', JSON.stringify(newBookings));
+                console.log("Form data submitted:", newBooking);
+                console.log("Simulating SMS notification to 475-208-0329 for new booking from " + newBooking.name);
             } catch (error) {
                 console.error("Failed to save booking to localStorage", error);
             }
@@ -317,11 +351,31 @@ const BookingPage = () => {
     };
 
     if (submitted) {
+        const serviceName = SERVICES_DATA.find(s => s.id === formData.service)?.title || 'a cleaning';
+        
         return (
             <PageWrapper className="text-center">
-                <h1 className="text-3xl font-bold text-green-600 mb-4">Booking Confirmed!</h1>
-                <p className="text-gray-700">Thank you, {formData.name}. We have received your request and will contact you shortly to confirm the details.</p>
-                <Link to="/" className="mt-8 inline-block bg-sky-500 text-white px-8 py-3 rounded-full text-lg font-semibold hover:bg-sky-600 transition duration-300">
+                <h1 className="text-3xl font-bold text-green-600 mb-4">Booking Request Sent!</h1>
+                <p className="text-gray-700 max-w-xl mx-auto mb-8">Thank you, {formData.name}. We have received your request and will contact you shortly to confirm the details.</p>
+                
+                {/* Admin Notification Simulation */}
+                <div className="mt-6 max-w-lg mx-auto bg-slate-100 border border-slate-200 text-slate-800 p-6 rounded-lg text-left shadow-sm">
+                    <div className="flex items-center mb-4">
+                        <EnvelopeIcon className="h-6 w-6 mr-3 text-sky-600"/>
+                        <h2 className="text-lg font-semibold text-gray-800">Admin Notification Sent</h2>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-1">The following confirmation has been sent to the business owner's phone:</p>
+                    <div className="mt-3 p-4 bg-white rounded-md border border-gray-200">
+                        <p className="text-gray-800">
+                            New booking from <span className="font-bold">{formData.name}</span> for {serviceName} on {new Date(formData.date).toLocaleDateString()}.
+                        </p>
+                        <p className="mt-2">
+                            Please review and confirm on your dashboard: <Link to="/admin/bookings" className="text-sky-600 font-semibold hover:underline">View Bookings</Link>
+                        </p>
+                    </div>
+                </div>
+
+                <Link to="/" className="mt-12 inline-block bg-sky-500 text-white px-8 py-3 rounded-full text-lg font-semibold hover:bg-sky-600 transition duration-300">
                     Back to Home
                 </Link>
             </PageWrapper>
@@ -435,39 +489,126 @@ const ContactPage = () => {
 
 const AdminBookingsPage = () => {
     const [bookings, setBookings] = useState<Booking[]>([]);
+    const [showConfirmModal, setShowConfirmModal] = useState<number | null>(null);
+    const [notification, setNotification] = useState<string | null>(null);
 
-    useEffect(() => {
+    const loadBookings = () => {
         try {
+            // FIX: The type `string` from JSON.parse is not assignable to the union type
+            // '"Pending" | "Confirmed"' for the `status` property in the Booking interface.
+            // Casting the result from JSON.parse to `unknown` and then to `Booking[]` resolves
+            // this strict type-checking error. This is a safe operation in this context
+            // because the application controls how booking data is serialized into localStorage.
             const storedBookings = JSON.parse(localStorage.getItem('bookings') || '[]');
-            setBookings(storedBookings);
+            setBookings((storedBookings as unknown as Booking[]).sort((a: Booking, b: Booking) => b.id - a.id));
         } catch (error) {
             console.error("Failed to load bookings from localStorage", error);
             setBookings([]);
         }
+    }
+
+    useEffect(() => {
+        loadBookings();
     }, []);
+
+    const updateLocalStorage = (updatedBookings: Booking[]) => {
+        localStorage.setItem('bookings', JSON.stringify(updatedBookings));
+        setBookings(updatedBookings);
+    };
+    
+    const handleConfirmBooking = (bookingId: number) => {
+        const updatedBookings = bookings.map(b => 
+            b.id === bookingId ? { ...b, status: 'Confirmed' } : b
+        );
+        updateLocalStorage(updatedBookings);
+
+        const confirmedBooking = updatedBookings.find(b => b.id === bookingId);
+        if (confirmedBooking) {
+            const message = `Confirmation sent to ${confirmedBooking.name}. A log was also sent to your number.`;
+            setNotification(message);
+            setTimeout(() => setNotification(null), 5000);
+        }
+    };
+    
+    const handleDeleteBooking = (bookingId: number) => {
+        const updatedBookings = bookings.filter(b => b.id !== bookingId);
+        updateLocalStorage(updatedBookings);
+        setShowConfirmModal(null);
+    };
 
     return (
         <PageWrapper>
             <h1 className="text-4xl font-bold text-center text-gray-800 mb-12">Customer Bookings</h1>
+            
+            {notification && (
+                <div className="fixed top-24 right-5 bg-green-500 text-white py-3 px-5 rounded-lg shadow-lg z-50 animate-fadeIn" role="alert" aria-live="assertive">
+                    <div className="flex items-center">
+                        <CheckCircleIcon className="w-6 h-6 mr-3" />
+                        <p>{notification}</p>
+                    </div>
+                </div>
+            )}
+
             {bookings.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {bookings.map((booking, index) => (
-                        <div key={index} className="bg-white p-6 rounded-lg shadow-md">
-                            <h3 className="text-xl font-bold text-sky-600 mb-2">{booking.name}</h3>
-                            <p className="text-gray-700 font-semibold">{SERVICES_DATA.find(s => s.id === booking.service)?.title || 'Unknown Service'}</p>
-                            <hr className="my-4" />
-                            <div className="space-y-2 text-sm text-gray-600">
-                                <p><span className="font-medium">Email:</span> {booking.email}</p>
-                                <p><span className="font-medium">Phone:</span> {booking.phone}</p>
-                                <p><span className="font-medium">Address:</span> {booking.address}</p>
-                                <p><span className="font-medium">Date:</span> {booking.date}</p>
-                                <p><span className="font-medium">Time:</span> {booking.time}</p>
-                            </div>
+                    {bookings.map((booking) => (
+                        <div key={booking.id} className="bg-white p-6 rounded-lg shadow-md flex flex-col justify-between">
+                           <div>
+                                <div className="flex justify-between items-start mb-2">
+                                    <h3 className="text-xl font-bold text-sky-600">{booking.name}</h3>
+                                    <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                                        booking.status === 'Confirmed' 
+                                        ? 'bg-green-100 text-green-800' 
+                                        : 'bg-yellow-100 text-yellow-800'
+                                    }`}>
+                                        {booking.status}
+                                    </span>
+                                </div>
+                                <p className="text-gray-700 font-semibold">{SERVICES_DATA.find(s => s.id === booking.service)?.title || 'Unknown Service'}</p>
+                                <hr className="my-4" />
+                                <div className="space-y-2 text-sm text-gray-600">
+                                    <p><span className="font-medium">Email:</span> {booking.email}</p>
+                                    <p><span className="font-medium">Phone:</span> {booking.phone}</p>
+                                    <p><span className="font-medium">Address:</span> {booking.address}</p>
+                                    <p><span className="font-medium">Date:</span> {new Date(booking.date).toLocaleDateString()}</p>
+                                    <p><span className="font-medium">Time:</span> {booking.time}</p>
+                                </div>
+                           </div>
+                           <div className="flex items-center justify-end space-x-2 mt-6">
+                               {booking.status === 'Pending' && (
+                                    <button onClick={() => handleConfirmBooking(booking.id)} className="flex items-center justify-center px-3 py-2 text-sm font-medium text-white bg-green-500 rounded-md hover:bg-green-600 transition-colors">
+                                        <CheckCircleIcon className="mr-1" />
+                                        Confirm
+                                    </button>
+                               )}
+                                <button onClick={() => setShowConfirmModal(booking.id)} className="flex items-center justify-center px-3 py-2 text-sm font-medium text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors">
+                                    <TrashIcon className="mr-1" />
+                                    Delete
+                                </button>
+                           </div>
                         </div>
                     ))}
                 </div>
             ) : (
                 <p className="text-center text-gray-600 text-lg">No bookings have been made yet.</p>
+            )}
+
+            {/* Confirmation Modal */}
+            {showConfirmModal !== null && (
+                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" aria-modal="true">
+                    <div className="bg-white p-8 rounded-lg shadow-2xl max-w-sm w-full">
+                        <h2 className="text-xl font-bold text-gray-800 mb-4">Confirm Deletion</h2>
+                        <p className="text-gray-600 mb-6">Are you sure you want to delete this booking? This action cannot be undone.</p>
+                        <div className="flex justify-end space-x-4">
+                            <button onClick={() => setShowConfirmModal(null)} className="px-4 py-2 rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300">
+                                Cancel
+                            </button>
+                             <button onClick={() => handleDeleteBooking(showConfirmModal)} className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </PageWrapper>
     );
