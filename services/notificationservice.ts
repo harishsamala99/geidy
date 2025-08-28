@@ -1,7 +1,8 @@
+const serviceType: ServiceType = "standard" as ServiceType;
+
 import { GoogleGenAI, Type } from "@google/genai";
 import type { BookingDetails, NotificationDetails } from '../types';
 import { ServiceType } from '../types';
-
 if (!process.env.API_KEY) {
   throw new Error("API_KEY environment variable not set");
 }
@@ -16,6 +17,7 @@ function getServiceTypeName(serviceType: ServiceType): string {
         default: return 'Unknown Service';
     }
 }
+
 
 export async function generateBookingNotification(details: BookingDetails): Promise<NotificationDetails> {
   const serviceTypeName = getServiceTypeName(details.serviceType);
