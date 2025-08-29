@@ -120,8 +120,8 @@ const House_Cleaner: Cleaner = {
   name: "Geidy Cabrera",
   role: "Founder & Head Cleaner",
   bio: "With over 15 years of experience, Geidy founded SparkleClean with a passion for creating pristine and healthy living spaces for her clients.",
-  imageUrl: "assests\pic2.png" ,
-  contact: "203-424-9033",
+  imageUrl: "./assests/pic2.png" ,
+  contact: "+14752080329",
 };
 
 
