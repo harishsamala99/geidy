@@ -1,11 +1,15 @@
+// types.ts
+
+// ✅ Service type constants + type
 export const ServiceType = {
-  Standard: 'standard',
-  Deep: 'deep',
-  MoveInOut: 'move-in-out',
+  Standard: "standard",
+  Deep: "deep",
+  MoveInOut: "move-in-out",
 } as const;
 
 export type ServiceType = typeof ServiceType[keyof typeof ServiceType];
 
+// ✅ Booking details
 export interface BookingDetails {
   name: string;
   address: string;
@@ -16,6 +20,7 @@ export interface BookingDetails {
   notes?: string;
 }
 
+// ✅ Notification details
 export interface NotificationDetails {
   subject: string;
   summary: string;
@@ -30,15 +35,20 @@ export interface NotificationDetails {
   suggestedAction: string;
 }
 
-
-
-// types.ts
+// ✅ Generated SMS notifications
 export interface GeneratedNotifications {
-  bookingId: string;        // unique booking ID (e.g., APT-001)
-  customerPhone: string;    // customer's phone number (+1234567890 format)
-  repPhone: string;         // representative's phone number
-  message: string;          // full SMS body content
-  date: string;            // optional appointment date
-  time: string;            // optional appointment time
-  service: string;         // optional service type
+  bookingId: string;     // unique booking ID (e.g., APT-001)
+  customerPhone: string; // customer's phone number (+1234567890 format)
+  repPhone: string;      // representative's phone number
+  message: string;       // full SMS body content
+  date: string;          // appointment date
+  time: string;          // appointment time
+  service: string;       // service type
+}
+
+// ✅ Add SmsStatus if needed
+export enum SmsStatus {
+  PENDING = "pending",
+  SENT = "sent",
+  FAILED = "failed",
 }
