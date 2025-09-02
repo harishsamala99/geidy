@@ -1,7 +1,7 @@
 
 
 import React from 'react';
-// FIX: Removed obsolete comment related to file casing issue, which is now resolved in icons.tsx.
+// FIX: Corrected import path casing to './Icons' to resolve a TypeScript compilation error caused by duplicate filenames with different casings.
 import { CheckCircleIcon, TicketIcon, MailIcon, UsersIcon, MobileIcon } from './icons';
 import type { BookingDetails, GeneratedNotifications, SmsStatus } from '../types';
 // FIX: Changed import path to `types.ts` where SmsStatus is now defined.

@@ -1,4 +1,4 @@
-// FIX: Consolidated all icon definitions into this file to resolve file casing conflicts between 'Icons.tsx' and 'icons.tsx'.
+// FIX: Consolidated all icon definitions into this file to resolve file casing conflicts. All icon imports should point to this file.
 import React from 'react';
 
 type IconProps = {

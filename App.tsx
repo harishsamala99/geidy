@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FormEvent, ReactNode } from 'react';
+import React, { useState, useEffect, FormEvent, ReactNode, createContext, useContext } from 'react';
 import { Routes, Route, Link, NavLink, useLocation, useNavigate, Navigate, Outlet } from 'react-router-dom';
 
 // --- 1. TYPE DEFINITIONS ---
@@ -32,6 +32,51 @@ interface Cleaner {
   imageUrl: string;
   contact: string;
 }
+
+// --- 1.5. NEW: AUTHENTICATION ---
+interface AuthContextType {
+    isAdmin: boolean;
+    login: (password: string) => boolean;
+    logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+    const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+        // Persist admin state in session storage
+        return sessionStorage.getItem('isAdmin') === 'true';
+    });
+
+    const login = (password: string): boolean => {
+        // NOTE: In a real-world application, this would be a secure API call.
+        // For this demo, we use a simple hardcoded password.
+        if (password === 'admin123') {
+            sessionStorage.setItem('isAdmin', 'true');
+            setIsAdmin(true);
+            return true;
+        }
+        return false;
+    };
+
+    const logout = () => {
+        sessionStorage.removeItem('isAdmin');
+        setIsAdmin(false);
+    };
+    
+    const value = { isAdmin, login, logout };
+
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
+};
+
 
 // --- 2. ICONS (as components) ---
 const SparkleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>);
@@ -100,7 +145,7 @@ const SERVICES_DATA: Service[] = [
 ];
 
 const House_Cleaner: Cleaner = {
-  name: "Geidy Cabrera", role: "Founder & Head Cleaner", bio: "With over 15 years of experience, Geidy founded SparkleClean with a passion for creating pristine and healthy living spaces.", imageUrl: "./assests/pic2.png", contact: "+14752080329",
+  name: "Geidy Cabrera", role: "Founder & Head Cleaner", bio: "With over 15 years of experience, Geidy founded SparkleClean with a passion for creating pristine and healthy living spaces.", imageUrl: "https://i.ibb.co/Vt9rQy7/cleaner.png", contact: "+14752080329",
 };
 
 // --- 6. LAYOUT & HELPER COMPONENTS ---
@@ -128,6 +173,8 @@ const AppLayout: React.FC = () => (
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isAdmin, logout } = useAuth();
   
   const navLinks = [
     { path: '/', name: 'Home' },
@@ -137,6 +184,12 @@ const Header = () => {
     { path: '/status', name: 'Check Status'},
   ];
   
+  const handleLogout = () => {
+      logout();
+      setIsOpen(false);
+      navigate('/');
+  };
+
   useEffect(() => { setIsOpen(false); }, [location]);
 
   return (
@@ -153,8 +206,14 @@ const Header = () => {
                 `text-gray-600 hover:text-sky-600 transition duration-300 ${isActive ? 'text-sky-600 font-semibold' : ''}`
               }>{link.name}</NavLink>
             ))}
-             <NavLink to="/admin/bookings" className={({ isActive }) => `text-gray-600 hover:text-sky-600 transition duration-300 ${isActive ? 'text-sky-600 font-semibold' : ''}`}>Admin</NavLink>
-             <Link to="/booking" className="bg-sky-500 text-white px-5 py-2 rounded-full hover:bg-sky-600 transition duration-300 shadow-sm">Book Now</Link>
+            {isAdmin ? (
+                <>
+                    <NavLink to="/admin/bookings" className={({ isActive }) => `text-gray-600 hover:text-sky-600 transition duration-300 ${isActive ? 'text-sky-600 font-semibold' : ''}`}>Dashboard</NavLink>
+                    <button onClick={handleLogout} className="bg-red-500 text-white px-5 py-2 rounded-full hover:bg-red-600 transition duration-300 shadow-sm">Logout</button>
+                </>
+            ) : (
+                <Link to="/booking" className="bg-sky-500 text-white px-5 py-2 rounded-full hover:bg-sky-600 transition duration-300 shadow-sm">Book Now</Link>
+            )}
           </div>
           <div className="md:hidden">
             <button onClick={() => setIsOpen(!isOpen)} className="text-gray-600 hover:text-sky-600 focus:outline-none">
@@ -171,8 +230,14 @@ const Header = () => {
                 `block w-full text-left px-2 py-1 text-gray-600 hover:text-sky-600 transition duration-300 ${isActive ? 'text-sky-600 font-semibold' : ''}`
               }>{link.name}</NavLink>
             ))}
-            <NavLink to="/admin/bookings" className={({ isActive }) => `block w-full text-left px-2 py-1 text-gray-600 hover:text-sky-600 transition duration-300 ${isActive ? 'text-sky-600 font-semibold' : ''}`}>Admin</NavLink>
-            <Link to="/booking" className="mt-2 w-full text-center bg-sky-500 text-white px-5 py-2 rounded-full hover:bg-sky-600 transition duration-300 shadow-sm">Book Now</Link>
+            {isAdmin ? (
+                <>
+                    <NavLink to="/admin/bookings" className={({ isActive }) => `block w-full text-left px-2 py-1 text-gray-600 hover:text-sky-600 transition duration-300 ${isActive ? 'text-sky-600 font-semibold' : ''}`}>Dashboard</NavLink>
+                    <button onClick={handleLogout} className="mt-2 w-full text-center bg-red-500 text-white px-5 py-2 rounded-full hover:bg-red-600 transition duration-300 shadow-sm">Logout</button>
+                </>
+            ) : (
+                <Link to="/booking" className="mt-2 w-full text-center bg-sky-500 text-white px-5 py-2 rounded-full hover:bg-sky-600 transition duration-300 shadow-sm">Book Now</Link>
+            )}
           </div>
         )}
       </nav>
@@ -534,11 +599,68 @@ const AdminBookingsPage = () => {
     );
 };
 
+const AdminLoginPage = () => {
+    const navigate = useNavigate();
+    const { login } = useAuth();
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+
+    const handleSubmit = (e: FormEvent) => {
+        e.preventDefault();
+        setError('');
+        if (login(password)) {
+            navigate('/admin/bookings', { replace: true });
+        } else {
+            setError('Invalid password. Please try again.');
+        }
+    };
+
+    return (
+        <PageWrapper>
+            <div className="max-w-md mx-auto bg-white p-8 rounded-lg shadow-xl mt-16">
+                <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">Admin Login</h1>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div>
+                        <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+                        <input
+                            type="password"
+                            name="password"
+                            id="password"
+                            required
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                            onChange={(e) => setPassword(e.target.value)}
+                            value={password}
+                            aria-describedby="password-error"
+                        />
+                    </div>
+                    {error && <p id="password-error" className="text-red-500 text-sm">{error}</p>}
+                    <div>
+                        <button type="submit" className="w-full bg-sky-500 text-white py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium hover:bg-sky-600">
+                            Login
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </PageWrapper>
+    );
+};
+
+const ProtectedRoute = () => {
+    const { isAdmin } = useAuth();
+    const location = useLocation();
+
+    if (!isAdmin) {
+        return <Navigate to="/admin/login" state={{ from: location }} replace />;
+    }
+
+    return <Outlet />;
+};
+
 // --- 8. MAIN APP COMPONENT ---
 
 export default function App() {
   return (
-    <>
+    <AuthProvider>
       <ScrollToTop />
       <Routes>
         <Route element={<AppLayout />}>
@@ -548,11 +670,15 @@ export default function App() {
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/booking" element={<BookingPage />} />
             <Route path="/status" element={<StatusPage />} />
-            <Route path="/admin/bookings" element={<AdminBookingsPage />} />
+            <Route path="/admin/login" element={<AdminLoginPage />} />
+            
+            <Route element={<ProtectedRoute />}>
+                <Route path="/admin/bookings" element={<AdminBookingsPage />} />
+            </Route>
         </Route>
         
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
-    </>
+    </AuthProvider>
   );
 }
