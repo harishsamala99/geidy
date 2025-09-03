@@ -1,9 +1,11 @@
 
 
+
+
 import React, { useState } from 'react';
 import type { BookingDetails } from '../types';
 import { ServiceType } from '../types';
-// FIX: Corrected import path casing to './Icons' to resolve a TypeScript compilation error caused by duplicate filenames with different casings.
+// FIX: Standardized icon import to use PascalCase 'Icons.tsx' to resolve file casing conflicts.
 import { CalendarIcon, ClockIcon, HomeIcon, UserIcon, PhoneIcon, PencilIcon, BedIcon, BathIcon } from './icons';
 
 interface BookingFormProps {

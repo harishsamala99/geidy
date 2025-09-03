@@ -1,7 +1,9 @@
 
 
+
+
 import React from 'react';
-// FIX: Corrected import path casing to './Icons' to resolve a TypeScript compilation error caused by duplicate filenames with different casings.
+// FIX: Standardized icon import to use PascalCase 'Icons.tsx' to resolve file casing conflicts.
 import { SparkleIcon } from './icons';
 
 const Header: React.FC = () => {

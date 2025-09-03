@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, FormEvent, ReactNode, createContext, useContext } from 'react';
 import { Routes, Route, Link, NavLink, useLocation, useNavigate, Navigate, Outlet } from 'react-router-dom';
 
@@ -127,7 +128,26 @@ const PhoneIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => ( <svg xml
 
 // --- 3. MOCK API & DATA ---
 
-let mockBookings: Booking[] = [];
+// Load bookings from localStorage on initial load
+let mockBookings: Booking[] = (() => {
+    try {
+        const storedBookings = localStorage.getItem('sparkleCleanBookings');
+        return storedBookings ? JSON.parse(storedBookings) : [];
+    } catch (error) {
+        console.error("Could not load bookings from localStorage:", error);
+        return [];
+    }
+})();
+
+// Helper function to save bookings to localStorage
+const persistBookings = () => {
+    try {
+        localStorage.setItem('sparkleCleanBookings', JSON.stringify(mockBookings));
+    } catch (error) {
+        console.error("Could not save bookings to localStorage:", error);
+    }
+};
+
 
 const mockApi = {
   getBookingByNumber: async (bookingNumber: string): Promise<Booking | null> => {
@@ -145,12 +165,14 @@ const mockApi = {
       status: 'Pending',
     };
     mockBookings.push(newBooking);
+    persistBookings();
     return new Promise(resolve => setTimeout(() => resolve(newBooking), 500));
   },
   updateBookingStatus: async (bookingId: number, status: BookingStatus): Promise<Booking | null> => {
     const bookingIndex = mockBookings.findIndex(b => b.id === bookingId);
     if (bookingIndex > -1) {
       mockBookings[bookingIndex].status = status;
+      persistBookings();
       return new Promise(resolve => setTimeout(() => resolve(mockBookings[bookingIndex]), 500));
     }
     return Promise.resolve(null);
@@ -158,7 +180,11 @@ const mockApi = {
   deleteBooking: async (bookingId: number): Promise<boolean> => {
       const initialLength = mockBookings.length;
       mockBookings = mockBookings.filter(b => b.id !== bookingId);
-      return new Promise(resolve => setTimeout(() => resolve(mockBookings.length < initialLength), 500));
+      const wasDeleted = mockBookings.length < initialLength;
+      if (wasDeleted) {
+          persistBookings();
+      }
+      return new Promise(resolve => setTimeout(() => resolve(wasDeleted), 500));
   }
 };
 

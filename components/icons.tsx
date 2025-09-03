@@ -1,4 +1,5 @@
-// FIX: Consolidated all icon definitions into this file to resolve file casing conflicts. All icon imports should point to this file.
+
+// FIX: Consolidated all icon definitions into this file (PascalCase) to resolve a file casing conflict.
 import React from 'react';
 
 type IconProps = {
