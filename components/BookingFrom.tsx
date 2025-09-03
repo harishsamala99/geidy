@@ -1,12 +1,11 @@
 
 
 
-
 import React, { useState } from 'react';
 import type { BookingDetails } from '../types';
 import { ServiceType } from '../types';
-// FIX: Standardized icon import to use PascalCase 'Icons.tsx' to resolve file casing conflicts.
-import { CalendarIcon, ClockIcon, HomeIcon, UserIcon, PhoneIcon, PencilIcon, BedIcon, BathIcon } from './icons';
+// FIX: Standardize icon imports to use the lowercase 'icons.tsx' entry file.
+import { CalendarIcon, ClockIcon, HomeIcon, UserIcon, PhoneIcon, PencilIcon, BedIcon, BathIcon } from './icons.tsx';
 
 interface BookingFormProps {
   onSubmit: (details: Omit<BookingDetails, 'bookingNumber'>) => void;

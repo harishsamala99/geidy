@@ -1,10 +1,9 @@
 
 
 
-
 import React from 'react';
-// FIX: Standardized icon import to use PascalCase 'Icons.tsx' to resolve file casing conflicts.
-import { SparkleIcon } from './icons';
+// FIX: Standardize icon imports to use the lowercase 'icons.tsx' entry file.
+import { SparkleIcon } from './icons.tsx';
 
 const Header: React.FC = () => {
   return (

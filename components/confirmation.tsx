@@ -1,10 +1,9 @@
 
 
 
-
 import React from 'react';
-// FIX: Standardized icon import to use PascalCase 'Icons.tsx' to resolve file casing conflicts.
-import { CheckCircleIcon, TicketIcon, MailIcon, UsersIcon, MobileIcon } from './icons';
+// FIX: Standardize icon imports to use the lowercase 'icons.tsx' entry file.
+import { CheckCircleIcon, TicketIcon, MailIcon, UsersIcon, MobileIcon } from './icons.tsx';
 import type { BookingDetails, GeneratedNotifications, SmsStatus } from '../types';
 
 interface ConfirmationProps {

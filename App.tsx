@@ -1,8 +1,7 @@
 
-
-
 import React, { useState, useEffect, FormEvent, ReactNode, createContext, useContext } from 'react';
 import { Routes, Route, Link, NavLink, useLocation, useNavigate, Navigate, Outlet } from 'react-router-dom';
+import * as api from "./services/databaseservice";
 
 // --- 1. TYPE DEFINITIONS ---
 type BookingStatus = 'Pending' | 'Approved' | 'Rejected';
@@ -25,7 +24,6 @@ interface Service {
   title: string;
   description:string;
   icon: React.FC<React.SVGProps<SVGSVGElement>>;
-  // FIX: Added price property to resolve error on line 352.
   price: string;
 }
 
@@ -37,14 +35,14 @@ interface Cleaner {
   contact: string;
 }
 
-// --- 1.5. NEW: AUTHENTICATION ---
+// --- 1.5. AUTHENTICATION ---
 interface AuthContextType {
     isAdmin: boolean;
     passwords: string[];
     login: (password: string) => boolean;
     logout: () => void;
-    addPassword: (password: string) => boolean;
-    deletePassword: (password: string) => boolean;
+    addPassword: (password: string) => Promise<boolean>;
+    deletePassword: (password: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -53,20 +51,18 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [isAdmin, setIsAdmin] = useState<boolean>(() => {
         return sessionStorage.getItem('isAdmin') === 'true';
     });
-
-    const [passwords, setPasswords] = useState<string[]>(() => {
-        const storedPasswords = localStorage.getItem('adminPasswords');
-        if (storedPasswords) {
-            return JSON.parse(storedPasswords);
-        }
-        const defaultPasswords = ['admin123', 'sparkle_admin_789', 'top_secret_pass'];
-        localStorage.setItem('adminPasswords', JSON.stringify(defaultPasswords));
-        return defaultPasswords;
-    });
+    const [passwords, setPasswords] = useState<string[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        localStorage.setItem('adminPasswords', JSON.stringify(passwords));
-    }, [passwords]);
+        const fetchPasswords = async () => {
+            setIsLoading(true);
+            const fetchedPasswords = await api.getPasswords();
+            setPasswords(fetchedPasswords);
+            setIsLoading(false);
+        };
+        fetchPasswords();
+    }, []);
 
     const login = (password: string): boolean => {
         if (passwords.includes(password)) {
@@ -82,24 +78,37 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         setIsAdmin(false);
     };
 
-    const addPassword = (password: string): boolean => {
+    const addPassword = async (password: string): Promise<boolean> => {
         if (!password || passwords.includes(password)) {
             return false;
         }
-        setPasswords(prev => [...prev, password]);
-        return true;
+        const success = await api.addPassword(password);
+        if (success) {
+            setPasswords(prev => [...prev, password]);
+        }
+        return success;
     };
 
-    const deletePassword = (passwordToDelete: string): boolean => {
+    const deletePassword = async (passwordToDelete: string): Promise<boolean> => {
         if (passwords.length <= 1) {
-            // Prevent deleting the last password
             return false;
         }
-        setPasswords(prev => prev.filter(p => p !== passwordToDelete));
-        return true;
+        const success = await api.deletePassword(passwordToDelete);
+        if (success) {
+            setPasswords(prev => prev.filter(p => p !== passwordToDelete));
+        }
+        return success;
     };
     
     const value = { isAdmin, passwords, login, logout, addPassword, deletePassword };
+    
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-gray-100">
+                <div className="text-xl font-semibold text-gray-700 animate-pulse">Loading Application...</div>
+            </div>
+        )
+    }
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
@@ -126,72 +135,8 @@ const CheckCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => ( <s
 const XCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" {...props}><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>);
 const PhoneIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" {...props}><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" /></svg>);
 
-// --- 3. MOCK API & DATA ---
-
-// Load bookings from localStorage on initial load
-let mockBookings: Booking[] = (() => {
-    try {
-        const storedBookings = localStorage.getItem('sparkleCleanBookings');
-        return storedBookings ? JSON.parse(storedBookings) : [];
-    } catch (error) {
-        console.error("Could not load bookings from localStorage:", error);
-        return [];
-    }
-})();
-
-// Helper function to save bookings to localStorage
-const persistBookings = () => {
-    try {
-        localStorage.setItem('sparkleCleanBookings', JSON.stringify(mockBookings));
-    } catch (error) {
-        console.error("Could not save bookings to localStorage:", error);
-    }
-};
-
-
-const mockApi = {
-  getBookingByNumber: async (bookingNumber: string): Promise<Booking | null> => {
-    const booking = mockBookings.find(b => b.bookingNumber.toLowerCase() === bookingNumber.toLowerCase());
-    return new Promise(resolve => setTimeout(() => resolve(booking || null), 500));
-  },
-  getAllBookings: async (): Promise<Booking[]> => {
-    return new Promise(resolve => setTimeout(() => resolve([...mockBookings]), 500));
-  },
-  createBooking: async (bookingData: Omit<Booking, 'id' | 'status' | 'bookingNumber'>): Promise<Booking> => {
-    const newBooking: Booking = {
-      ...bookingData,
-      id: mockBookings.length > 0 ? Math.max(...mockBookings.map(b => b.id)) + 1 : 1,
-      bookingNumber: `SPK${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-      status: 'Pending',
-    };
-    mockBookings.push(newBooking);
-    persistBookings();
-    return new Promise(resolve => setTimeout(() => resolve(newBooking), 500));
-  },
-  updateBookingStatus: async (bookingId: number, status: BookingStatus): Promise<Booking | null> => {
-    const bookingIndex = mockBookings.findIndex(b => b.id === bookingId);
-    if (bookingIndex > -1) {
-      mockBookings[bookingIndex].status = status;
-      persistBookings();
-      return new Promise(resolve => setTimeout(() => resolve(mockBookings[bookingIndex]), 500));
-    }
-    return Promise.resolve(null);
-  },
-  deleteBooking: async (bookingId: number): Promise<boolean> => {
-      const initialLength = mockBookings.length;
-      mockBookings = mockBookings.filter(b => b.id !== bookingId);
-      const wasDeleted = mockBookings.length < initialLength;
-      if (wasDeleted) {
-          persistBookings();
-      }
-      return new Promise(resolve => setTimeout(() => resolve(wasDeleted), 500));
-  }
-};
-
-
 // --- 5. DATA CONSTANTS ---
 
-// FIX: Added prices to services data to resolve error on line 352.
 const SERVICES_DATA: Service[] = [
   { id: 'deep-cleaning', title: 'Deep Cleaning', description: 'A thorough cleaning of your entire home, top to bottom.', icon: DeepCleanIcon, price: '$250' },
   { id: 'carpet-cleaning', title: 'Carpet Cleaning', description: 'Professional steam cleaning for your carpets.', icon: CarpetIcon, price: '$180' },
@@ -202,7 +147,7 @@ const SERVICES_DATA: Service[] = [
 ];
 
 const House_Cleaner: Cleaner = {
-  name: "Geidy Cabrera", role: "Founder & Head Cleaner", bio: "With over 15 years of experience, Geidy founded SparkleClean with a passion for creating pristine and healthy living spaces.", imageUrl: "https://i.ibb.co/Vt9rQy7/cleaner.png", contact: "+14752080329",
+  name: "Geidy Cabrera", role: "Founder & Head Cleaner", bio: "With over 15 years of experience, Geidy founded SparkleClean with a passion for creating pristine and healthy living spaces.", imageUrl:  "./assests/pic2.png", contact: "+14752080329",
 };
 
 // --- 6. LAYOUT & HELPER COMPONENTS ---
@@ -411,7 +356,7 @@ const BookingPage = () => {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        const newBooking = await mockApi.createBooking(formData);
+        const newBooking = await api.createBooking(formData);
         setIsSubmitting(false);
         navigate(`/status?bookingNumber=${newBooking.bookingNumber}`);
     };
@@ -502,7 +447,7 @@ const StatusPage: React.FC = () => {
         setError('');
         setBooking(null);
         
-        const result = await mockApi.getBookingByNumber(bn);
+        const result = await api.getBookingByNumber(bn);
         
         if (result) {
             setBooking(result);
@@ -572,22 +517,25 @@ const StatusPage: React.FC = () => {
 
 const AdminBookingsPage = () => {
     const [bookings, setBookings] = useState<Booking[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [showDeleteModal, setShowDeleteModal] = useState<number | null>(null);
 
     const loadBookings = async () => {
-        const allBookings = await mockApi.getAllBookings();
+        setIsLoading(true);
+        const allBookings = await api.getAllBookings();
         setBookings(allBookings.sort((a, b) => b.id - a.id));
+        setIsLoading(false);
     };
 
     useEffect(() => { loadBookings(); }, []);
 
     const handleUpdateStatus = async (bookingId: number, status: BookingStatus) => {
-        await mockApi.updateBookingStatus(bookingId, status);
+        await api.updateBookingStatus(bookingId, status);
         loadBookings();
     };
     
     const handleDeleteBooking = async (bookingId: number) => {
-        await mockApi.deleteBooking(bookingId);
+        await api.deleteBooking(bookingId);
         setShowDeleteModal(null);
         loadBookings();
     };
@@ -606,7 +554,9 @@ const AdminBookingsPage = () => {
     return (
         <PageWrapper>
             <h1 className="text-4xl font-bold text-center text-gray-800 mb-12">Admin Dashboard: All Bookings</h1>
-            {bookings.length > 0 ? (
+             {isLoading ? (
+                <p className="text-center text-gray-600 text-lg">Loading bookings...</p>
+            ) : bookings.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {bookings.map((booking) => (
                         <div key={booking.id} className="bg-white p-6 rounded-lg shadow-md flex flex-col justify-between">
@@ -714,9 +664,10 @@ const AdminSettingsPage = () => {
     const [newPassword, setNewPassword] = useState('');
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-    const handleAddPassword = (e: FormEvent) => {
+    const handleAddPassword = async (e: FormEvent) => {
         e.preventDefault();
-        if (addPassword(newPassword)) {
+        setMessage(null);
+        if (await addPassword(newPassword)) {
             setMessage({ text: 'Password added successfully.', type: 'success' });
             setNewPassword('');
         } else {
@@ -724,8 +675,9 @@ const AdminSettingsPage = () => {
         }
     };
 
-    const handleDeletePassword = (password: string) => {
-        if (deletePassword(password)) {
+    const handleDeletePassword = async (password: string) => {
+        setMessage(null);
+        if (await deletePassword(password)) {
             setMessage({ text: 'Password removed successfully.', type: 'success' });
         } else {
             setMessage({ text: 'Cannot remove the last password.', type: 'error' });
@@ -751,7 +703,8 @@ const AdminSettingsPage = () => {
                                 <span className="font-mono text-gray-700">{pw}</span>
                                 <button
                                     onClick={() => handleDeletePassword(pw)}
-                                    className="text-red-500 hover:text-red-700 font-semibold"
+                                    className="text-red-500 hover:text-red-700 font-semibold disabled:text-gray-400 disabled:cursor-not-allowed"
+                                    disabled={passwords.length <= 1}
                                 >
                                     Remove
                                 </button>
