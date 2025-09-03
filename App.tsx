@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, FormEvent, ReactNode, createContext, useContext } from 'react';
 import { Routes, Route, Link, NavLink, useLocation, useNavigate, Navigate, Outlet } from 'react-router-dom';
 
@@ -21,8 +23,9 @@ interface Service {
   id: string;
   title: string;
   description:string;
-  price: string;
   icon: React.FC<React.SVGProps<SVGSVGElement>>;
+  // FIX: Added price property to resolve error on line 352.
+  price: string;
 }
 
 interface Cleaner {
@@ -36,22 +39,36 @@ interface Cleaner {
 // --- 1.5. NEW: AUTHENTICATION ---
 interface AuthContextType {
     isAdmin: boolean;
+    passwords: string[];
     login: (password: string) => boolean;
     logout: () => void;
+    addPassword: (password: string) => boolean;
+    deletePassword: (password: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [isAdmin, setIsAdmin] = useState<boolean>(() => {
-        // Persist admin state in session storage
         return sessionStorage.getItem('isAdmin') === 'true';
     });
 
+    const [passwords, setPasswords] = useState<string[]>(() => {
+        const storedPasswords = localStorage.getItem('adminPasswords');
+        if (storedPasswords) {
+            return JSON.parse(storedPasswords);
+        }
+        const defaultPasswords = ['admin123', 'sparkle_admin_789', 'top_secret_pass'];
+        localStorage.setItem('adminPasswords', JSON.stringify(defaultPasswords));
+        return defaultPasswords;
+    });
+
+    useEffect(() => {
+        localStorage.setItem('adminPasswords', JSON.stringify(passwords));
+    }, [passwords]);
+
     const login = (password: string): boolean => {
-        // NOTE: In a real-world application, this would be a secure API call.
-        // For this demo, we use a simple hardcoded password.
-        if (password === 'admin123') {
+        if (passwords.includes(password)) {
             sessionStorage.setItem('isAdmin', 'true');
             setIsAdmin(true);
             return true;
@@ -63,8 +80,25 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         sessionStorage.removeItem('isAdmin');
         setIsAdmin(false);
     };
+
+    const addPassword = (password: string): boolean => {
+        if (!password || passwords.includes(password)) {
+            return false;
+        }
+        setPasswords(prev => [...prev, password]);
+        return true;
+    };
+
+    const deletePassword = (passwordToDelete: string): boolean => {
+        if (passwords.length <= 1) {
+            // Prevent deleting the last password
+            return false;
+        }
+        setPasswords(prev => prev.filter(p => p !== passwordToDelete));
+        return true;
+    };
     
-    const value = { isAdmin, login, logout };
+    const value = { isAdmin, passwords, login, logout, addPassword, deletePassword };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
@@ -93,11 +127,7 @@ const PhoneIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => ( <svg xml
 
 // --- 3. MOCK API & DATA ---
 
-let mockBookings: Booking[] = [
-    { id: 1, bookingNumber: 'SPK9A3B2', name: 'John Doe', email: 'john@example.com', phone: '123-456-7890', address: '123 Main St, Anytown, USA', service: 'deep-cleaning', date: '2024-08-15', time: '10:00', status: 'Approved' },
-    { id: 2, bookingNumber: 'SPK4C7D8', name: 'Jane Smith', email: 'jane@example.com', phone: '098-765-4321', address: '456 Oak Ave, Sometown, USA', service: 'carpet-cleaning', date: '2024-08-20', time: '14:00', status: 'Pending' },
-    { id: 3, bookingNumber: 'SPK1E9F0', name: 'Peter Jones', email: 'peter@example.com', phone: '555-555-5555', address: '789 Pine Ln, Otherville, USA', service: 'window-cleaning', date: '2024-08-22', time: '09:00', status: 'Rejected' },
-];
+let mockBookings: Booking[] = [];
 
 const mockApi = {
   getBookingByNumber: async (bookingNumber: string): Promise<Booking | null> => {
@@ -135,13 +165,14 @@ const mockApi = {
 
 // --- 5. DATA CONSTANTS ---
 
+// FIX: Added prices to services data to resolve error on line 352.
 const SERVICES_DATA: Service[] = [
-  { id: 'deep-cleaning', title: 'Deep Cleaning', description: 'A thorough cleaning of your entire home, top to bottom.', price: '$250+', icon: DeepCleanIcon },
-  { id: 'carpet-cleaning', title: 'Carpet Cleaning', description: 'Professional steam cleaning for your carpets.', price: '$120+', icon: CarpetIcon },
-  { id: 'kitchen-cleaning', title: 'Kitchen Cleaning', description: 'We sanitize all surfaces and clean appliances.', price: '$80+', icon: KitchenIcon },
-  { id: 'bathroom-cleaning', title: 'Bathroom Cleaning', description: 'A complete disinfection and cleaning of bathrooms.', price: '$70+', icon: BathroomIcon },
-  { id: 'window-cleaning', title: 'Window Cleaning', description: 'Streak-free cleaning for all interior and exterior windows.', price: '$90+', icon: WindowIcon },
-  { id: 'office-cleaning', title: 'Office Cleaning', description: 'Customized cleaning plans for commercial spaces.', price: 'Contact Us', icon: OfficeIcon },
+  { id: 'deep-cleaning', title: 'Deep Cleaning', description: 'A thorough cleaning of your entire home, top to bottom.', icon: DeepCleanIcon, price: '$250' },
+  { id: 'carpet-cleaning', title: 'Carpet Cleaning', description: 'Professional steam cleaning for your carpets.', icon: CarpetIcon, price: '$180' },
+  { id: 'kitchen-cleaning', title: 'Kitchen Cleaning', description: 'We sanitize all surfaces and clean appliances.', icon: KitchenIcon, price: '$120' },
+  { id: 'bathroom-cleaning', title: 'Bathroom Cleaning', description: 'A complete disinfection and cleaning of bathrooms.', icon: BathroomIcon, price: '$100' },
+  { id: 'window-cleaning', title: 'Window Cleaning', description: 'Streak-free cleaning for all interior and exterior windows.', icon: WindowIcon, price: '$150' },
+  { id: 'office-cleaning', title: 'Office Cleaning', description: 'Customized cleaning plans for commercial spaces.', icon: OfficeIcon, price: 'Contact for Quote' },
 ];
 
 const House_Cleaner: Cleaner = {
@@ -209,6 +240,7 @@ const Header = () => {
             {isAdmin ? (
                 <>
                     <NavLink to="/admin/bookings" className={({ isActive }) => `text-gray-600 hover:text-sky-600 transition duration-300 ${isActive ? 'text-sky-600 font-semibold' : ''}`}>Dashboard</NavLink>
+                    <NavLink to="/admin/settings" className={({ isActive }) => `text-gray-600 hover:text-sky-600 transition duration-300 ${isActive ? 'text-sky-600 font-semibold' : ''}`}>Settings</NavLink>
                     <button onClick={handleLogout} className="bg-red-500 text-white px-5 py-2 rounded-full hover:bg-red-600 transition duration-300 shadow-sm">Logout</button>
                 </>
             ) : (
@@ -233,6 +265,7 @@ const Header = () => {
             {isAdmin ? (
                 <>
                     <NavLink to="/admin/bookings" className={({ isActive }) => `block w-full text-left px-2 py-1 text-gray-600 hover:text-sky-600 transition duration-300 ${isActive ? 'text-sky-600 font-semibold' : ''}`}>Dashboard</NavLink>
+                    <NavLink to="/admin/settings" className={({ isActive }) => `block w-full text-left px-2 py-1 text-gray-600 hover:text-sky-600 transition duration-300 ${isActive ? 'text-sky-600 font-semibold' : ''}`}>Settings</NavLink>
                     <button onClick={handleLogout} className="mt-2 w-full text-center bg-red-500 text-white px-5 py-2 rounded-full hover:bg-red-600 transition duration-300 shadow-sm">Logout</button>
                 </>
             ) : (
@@ -546,28 +579,33 @@ const AdminBookingsPage = () => {
 
     return (
         <PageWrapper>
-            <h1 className="text-4xl font-bold text-center text-gray-800 mb-12">Customer Bookings (Admin)</h1>
+            <h1 className="text-4xl font-bold text-center text-gray-800 mb-12">Admin Dashboard: All Bookings</h1>
             {bookings.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {bookings.map((booking) => (
                         <div key={booking.id} className="bg-white p-6 rounded-lg shadow-md flex flex-col justify-between">
                            <div>
                                 <div className="flex justify-between items-start mb-2">
-                                    <h3 className="text-xl font-bold text-sky-600">{booking.name}</h3>
+                                    <h3 className="text-xl font-bold text-sky-600">{SERVICES_DATA.find(s => s.id === booking.service)?.title}</h3>
                                     <span className={getStatusChip(booking.status)}>{booking.status}</span>
                                 </div>
-                                <p className="text-gray-700 font-semibold">{SERVICES_DATA.find(s => s.id === booking.service)?.title}</p>
-                                <hr className="my-4" />
+                                <p className="text-gray-500 text-sm font-mono mb-4">{booking.bookingNumber}</p>
+                                <hr className="my-3" />
+                                <div className="space-y-2 text-sm text-gray-700">
+                                    <p><strong className="font-medium text-gray-900">Customer:</strong> {booking.name}</p>
+                                    <p className="flex items-center">
+                                        <PhoneIcon className="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" />
+                                        <a href={`tel:${booking.phone}`} className="text-sky-600 hover:underline">{booking.phone}</a>
+                                    </p>
+                                    <p><strong className="font-medium text-gray-900">Address:</strong> {booking.address}</p>
+                                </div>
+                                <hr className="my-3" />
                                 <div className="space-y-2 text-sm text-gray-600">
-                                    <p><span className="font-medium">Booking #:</span> {booking.bookingNumber}</p>
-                                    <p><span className="font-medium">Date:</span> {new Date(booking.date).toLocaleDateString()} at {booking.time}</p>
-                                    <p><span className="font-medium">Phone:</span> {booking.phone}</p>
-                                    <p><span className="font-medium">Email:</span> {booking.email}</p>
-                                    <p><span className="font-medium">Address:</span> {booking.address}</p>
+                                    <p><span className="font-medium">Date:</span> {new Date(booking.date).toLocaleDateString()}</p>
+                                    <p><span className="font-medium">Time:</span> {booking.time}</p>
                                 </div>
                            </div>
                            <div className="flex flex-wrap items-center justify-end gap-2 mt-6">
-                               <a href={`tel:${booking.phone}`} className="flex items-center px-3 py-2 text-sm text-white bg-sky-500 rounded-md hover:bg-sky-600"><PhoneIcon className="mr-1 h-4 w-4" />Contact</a>
                                {booking.status === 'Pending' && (
                                 <>
                                   <button onClick={() => handleUpdateStatus(booking.id, 'Approved')} className="flex items-center px-3 py-2 text-sm text-white bg-green-500 rounded-md hover:bg-green-600"><CheckCircleIcon className="mr-1" />Approve</button>
@@ -645,6 +683,82 @@ const AdminLoginPage = () => {
     );
 };
 
+const AdminSettingsPage = () => {
+    const { passwords, addPassword, deletePassword } = useAuth();
+    const [newPassword, setNewPassword] = useState('');
+    const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+    const handleAddPassword = (e: FormEvent) => {
+        e.preventDefault();
+        if (addPassword(newPassword)) {
+            setMessage({ text: 'Password added successfully.', type: 'success' });
+            setNewPassword('');
+        } else {
+            setMessage({ text: 'Password cannot be empty or already exist.', type: 'error' });
+        }
+    };
+
+    const handleDeletePassword = (password: string) => {
+        if (deletePassword(password)) {
+            setMessage({ text: 'Password removed successfully.', type: 'success' });
+        } else {
+            setMessage({ text: 'Cannot remove the last password.', type: 'error' });
+        }
+    };
+
+    return (
+        <PageWrapper>
+            <div className="max-w-2xl mx-auto">
+                <h1 className="text-4xl font-bold text-center text-gray-800 mb-12">Admin Settings</h1>
+                <div className="bg-white p-8 rounded-lg shadow-xl">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-6">Manage Passwords</h2>
+                    
+                    {message && (
+                        <div className={`p-4 mb-6 rounded-md text-sm ${message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                            {message.text}
+                        </div>
+                    )}
+                    
+                    <div className="space-y-4 mb-8">
+                        {passwords.map(pw => (
+                            <div key={pw} className="flex items-center justify-between bg-gray-50 p-4 rounded-md">
+                                <span className="font-mono text-gray-700">{pw}</span>
+                                <button
+                                    onClick={() => handleDeletePassword(pw)}
+                                    className="text-red-500 hover:text-red-700 font-semibold"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    <form onSubmit={handleAddPassword} className="space-y-4">
+                        <h3 className="text-xl font-semibold text-gray-700">Add New Password</h3>
+                        <div>
+                            <label htmlFor="new-password" className="sr-only">New Password</label>
+                            <input
+                                id="new-password"
+                                type="text"
+                                value={newPassword}
+                                onChange={e => setNewPassword(e.target.value)}
+                                placeholder="Enter new password"
+                                className="block w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                            />
+                        </div>
+                        <div>
+                            <button type="submit" className="w-full bg-sky-500 text-white py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium hover:bg-sky-600">
+                                Add Password
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </PageWrapper>
+    );
+};
+
+
 const ProtectedRoute = () => {
     const { isAdmin } = useAuth();
     const location = useLocation();
@@ -674,6 +788,7 @@ export default function App() {
             
             <Route element={<ProtectedRoute />}>
                 <Route path="/admin/bookings" element={<AdminBookingsPage />} />
+                <Route path="/admin/settings" element={<AdminSettingsPage />} />
             </Route>
         </Route>
         
