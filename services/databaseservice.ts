@@ -1,4 +1,4 @@
-// --- TYPE DEFINITIONS (mirrored from App.tsx for service independence) ---
+// --- TYPE DEFINITIONS ---
 type BookingStatus = 'Pending' | 'Approved' | 'Rejected';
 
 interface Booking {
@@ -14,149 +14,102 @@ interface Booking {
   status: BookingStatus;
 }
 
-interface AppDatabase {
-    bookings: Booking[];
-    adminPasswords: string[];
-}
+const DB_URL = 'http://localhost:4000';
 
-
-// --- DATABASE CONFIGURATION ---
-
-// IMPORTANT: This service uses a free public JSON store (npoint.io) to simulate a
-// real database. This is for demonstration purposes only to allow data sharing
-// across devices without a proper backend.
-//
-// In a production environment, you MUST use a secure, private database.
-// The data at this URL is public and can be overwritten by anyone.
-const DB_URL = 'https://api.npoint.io/0821880993a43bf4c735';
-
-const getInitialData = (): AppDatabase => ({
-    bookings: [],
-    adminPasswords: ['admin123', 'sparkle_admin_789', 'top_secret_pass'],
-});
-
-
-// --- CORE DB HELPER FUNCTIONS ---
-
-async function fetchDb(): Promise<AppDatabase> {
-    try {
-        const response = await fetch(DB_URL);
-        if (response.ok) {
-            const data = await response.json();
-            // Basic validation to ensure the fetched data has the expected structure
-            if (data && Array.isArray(data.bookings) && Array.isArray(data.adminPasswords)) {
-                return data as AppDatabase;
-            }
-        }
-        // If response is not ok, or data is malformed, return initial data
-        console.warn('Database is empty or corrupt, initializing with default data.');
-        const initialData = getInitialData();
-        await updateDb(initialData);
-        return initialData;
-    } catch (error) {
-        console.error('Failed to fetch from DB, using initial data:', error);
-        const initialData = getInitialData();
-        await updateDb(initialData);
-        return initialData;
-    }
-}
-
-async function updateDb(data: AppDatabase): Promise<void> {
-    try {
-        const response = await fetch(DB_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        });
-        if (!response.ok) {
-            throw new Error(`DB update failed with status: ${response.status}`);
-        }
-    } catch (error) {
-        console.error('Failed to update DB:', error);
-        // In a real app, you'd want more robust error handling.
-    }
-}
-
-
-// --- PUBLIC API: BOOKINGS ---
+// --- BOOKINGS API ---
 
 export const getAllBookings = async (): Promise<Booking[]> => {
-    const db = await fetchDb();
-    return db.bookings;
+  const res = await fetch(`${DB_URL}/bookings`);
+  return await res.json();
 };
 
-export const getBookingByNumber = async (bookingNumber: string): Promise<Booking | null> => {
-    const db = await fetchDb();
-    return db.bookings.find(b => b.bookingNumber.toLowerCase() === bookingNumber.toLowerCase()) || null;
+export const getBookingByNumber = async (
+  bookingNumber: string
+): Promise<Booking | null> => {
+  const bookings = await getAllBookings();
+  return (
+    bookings.find(
+      (b) => b.bookingNumber.toLowerCase() === bookingNumber.toLowerCase()
+    ) || null
+  );
 };
 
-export const createBooking = async (bookingData: Omit<Booking, 'id' | 'status' | 'bookingNumber'>): Promise<Booking> => {
-    const db = await fetchDb();
-    const newBooking: Booking = {
-      ...bookingData,
-      id: db.bookings.length > 0 ? Math.max(...db.bookings.map(b => b.id)) + 1 : 1,
-      bookingNumber: `SPK${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-      status: 'Pending',
-    };
-    db.bookings.push(newBooking);
-    await updateDb(db);
-    return newBooking;
+export const createBooking = async (
+  bookingData: Omit<Booking, 'id' | 'status' | 'bookingNumber'>
+): Promise<Booking> => {
+  const newBooking: Booking = {
+    ...bookingData,
+    id: Date.now(),
+    bookingNumber: `SPK${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+    status: 'Pending',
+  };
+
+  const res = await fetch(`${DB_URL}/bookings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(newBooking),
+  });
+
+  return await res.json();
 };
 
-export const updateBookingStatus = async (bookingId: number, status: BookingStatus): Promise<Booking | null> => {
-    const db = await fetchDb();
-    const bookingIndex = db.bookings.findIndex(b => b.id === bookingId);
-    if (bookingIndex > -1) {
-        db.bookings[bookingIndex].status = status;
-        await updateDb(db);
-        return db.bookings[bookingIndex];
-    }
-    return null;
+export const updateBookingStatus = async (
+  bookingId: number,
+  status: BookingStatus
+): Promise<Booking | null> => {
+  const res = await fetch(`${DB_URL}/bookings/${bookingId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  });
+
+  if (!res.ok) return null;
+  return await res.json();
 };
 
 export const deleteBooking = async (bookingId: number): Promise<boolean> => {
-    const db = await fetchDb();
-    const initialLength = db.bookings.length;
-    db.bookings = db.bookings.filter(b => b.id !== bookingId);
-    const wasDeleted = db.bookings.length < initialLength;
-    if (wasDeleted) {
-        await updateDb(db);
-    }
-    return wasDeleted;
+  const res = await fetch(`${DB_URL}/bookings/${bookingId}`, {
+    method: 'DELETE',
+  });
+  return res.ok;
 };
 
-
-// --- PUBLIC API: PASSWORDS ---
+// --- PASSWORDS API ---
 
 export const getPasswords = async (): Promise<string[]> => {
-    const db = await fetchDb();
-    // Ensure there's at least one password
-    if (db.adminPasswords.length === 0) {
-        const initialData = getInitialData();
-        await updateDb(initialData);
-        return initialData.adminPasswords;
-    }
-    return db.adminPasswords;
-}
+  const res = await fetch(`${DB_URL}/adminPasswords`);
+  return await res.json();
+};
 
 export const addPassword = async (password: string): Promise<boolean> => {
-    const db = await fetchDb();
-    if (!password || db.adminPasswords.includes(password)) {
-        return false;
-    }
-    db.adminPasswords.push(password);
-    await updateDb(db);
-    return true;
-}
+  const passwords = await getPasswords();
+  if (!password || passwords.includes(password)) return false;
 
-export const deletePassword = async (passwordToDelete: string): Promise<boolean> => {
-    const db = await fetchDb();
-    if (db.adminPasswords.length <= 1) {
-        return false; // Prevent deleting the last password
-    }
-    db.adminPasswords = db.adminPasswords.filter(p => p !== passwordToDelete);
-    await updateDb(db);
-    return true;
-}
+  const res = await fetch(`${DB_URL}/adminPasswords`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(password),
+  });
+
+  return res.ok;
+};
+
+export const deletePassword = async (
+  passwordToDelete: string
+): Promise<boolean> => {
+  const passwords = await getPasswords();
+  const index = passwords.indexOf(passwordToDelete);
+  if (index === -1 || passwords.length <= 1) return false;
+
+  // JSON Server stores passwords as an array, not objects with IDs.
+  // So we overwrite the whole array instead of deleting one by ID.
+  const updatedPasswords = passwords.filter((p) => p !== passwordToDelete);
+
+  const res = await fetch(`${DB_URL}/adminPasswords`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updatedPasswords),
+  });
+
+  return res.ok;
+};

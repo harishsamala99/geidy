@@ -1,7 +1,8 @@
 
+
 import React, { useState, useEffect, FormEvent, ReactNode, createContext, useContext } from 'react';
 import { Routes, Route, Link, NavLink, useLocation, useNavigate, Navigate, Outlet } from 'react-router-dom';
-import * as api from "./services/databaseservice";
+import * as api from './services/databaseservice';
 
 // --- 1. TYPE DEFINITIONS ---
 type BookingStatus = 'Pending' | 'Approved' | 'Rejected';
@@ -52,14 +53,11 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         return sessionStorage.getItem('isAdmin') === 'true';
     });
     const [passwords, setPasswords] = useState<string[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const fetchPasswords = async () => {
-            setIsLoading(true);
             const fetchedPasswords = await api.getPasswords();
             setPasswords(fetchedPasswords);
-            setIsLoading(false);
         };
         fetchPasswords();
     }, []);
@@ -101,14 +99,6 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     };
     
     const value = { isAdmin, passwords, login, logout, addPassword, deletePassword };
-    
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-100">
-                <div className="text-xl font-semibold text-gray-700 animate-pulse">Loading Application...</div>
-            </div>
-        )
-    }
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
@@ -147,7 +137,7 @@ const SERVICES_DATA: Service[] = [
 ];
 
 const House_Cleaner: Cleaner = {
-  name: "Geidy Cabrera", role: "Founder & Head Cleaner", bio: "With over 15 years of experience, Geidy founded SparkleClean with a passion for creating pristine and healthy living spaces.", imageUrl:  "./assests/pic2.png", contact: "+14752080329",
+  name: "Geidy Cabrera", role: "Founder & Head Cleaner", bio: "With over 15 years of experience, Geidy founded SparkleClean with a passion for creating pristine and healthy living spaces.", imageUrl: "https://i.ibb.co/Vt9rQy7/cleaner.png", contact: "+14752080329",
 };
 
 // --- 6. LAYOUT & HELPER COMPONENTS ---

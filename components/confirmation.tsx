@@ -1,8 +1,5 @@
-
-
-
 import React from 'react';
-// FIX: Standardize icon imports to use the lowercase 'icons.tsx' entry file.
+// FIX: Changed import to be explicit with file extension to resolve casing conflict.
 import { CheckCircleIcon, TicketIcon, MailIcon, UsersIcon, MobileIcon } from './icons.tsx';
 import type { BookingDetails, GeneratedNotifications, SmsStatus } from '../types';
 
@@ -79,6 +76,7 @@ const Confirmation: React.FC<ConfirmationProps> = ({ notifications, bookingDetai
         </div>
 
         {/* Representative Notification Card */}
+        {/* FIX: Corrected a typo in the className from 'bg-bg-teal-50' to 'bg-teal-50'. */}
         <div className="bg-teal-50 border border-teal-200 rounded-lg p-5 flex flex-col">
           <div className="flex items-center mb-3">
             <UsersIcon className="w-6 h-6 text-teal-600 mr-3 flex-shrink-0" />
