@@ -1,6 +1,6 @@
 import React from 'react';
-// FIX: Changed import to be explicit with file extension to resolve casing conflict.
-import { SparkleIcon } from './icons.tsx';
+// FIX: Removed file extension from import path to allow for correct module resolution and fix casing conflict.
+import { SparkleIcon } from './icons';
 
 const Header: React.FC = () => {
   return (

@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, FormEvent, ReactNode, createContext, useContext } from 'react';
 import { Routes, Route, Link, NavLink, useLocation, useNavigate, Navigate, Outlet } from 'react-router-dom';
 import * as api from './services/databaseservice';
@@ -49,10 +47,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [isAdmin, setIsAdmin] = useState<boolean>(() => {
-        return sessionStorage.getItem('isAdmin') === 'true';
-    });
-    const [passwords, setPasswords] = useState<string[]>([]);
+    const [isAdmin, setIsAdmin] = useState<boolean>(() => sessionStorage.getItem('isAdmin') === 'true');
+    const [passwords, setPasswords] = useState<{ id: string; password: string }[]>([]);
 
     useEffect(() => {
         const fetchPasswords = async () => {
@@ -63,7 +59,7 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }, []);
 
     const login = (password: string): boolean => {
-        if (passwords.includes(password)) {
+        if (passwords.some(p => p.password === password)) {
             sessionStorage.setItem('isAdmin', 'true');
             setIsAdmin(true);
             return true;
@@ -77,31 +73,29 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     };
 
     const addPassword = async (password: string): Promise<boolean> => {
-        if (!password || passwords.includes(password)) {
-            return false;
-        }
-        const success = await api.addPassword(password);
-        if (success) {
-            setPasswords(prev => [...prev, password]);
-        }
+        if (!password || passwords.some(p => p.password === password)) return false;
+        const newPw = { id: Date.now().toString(), password };
+        const success = await api.addPassword(newPw);
+        if (success) setPasswords(prev => [...prev, newPw]);
         return success;
     };
 
     const deletePassword = async (passwordToDelete: string): Promise<boolean> => {
-        if (passwords.length <= 1) {
-            return false;
-        }
-        const success = await api.deletePassword(passwordToDelete);
-        if (success) {
-            setPasswords(prev => prev.filter(p => p !== passwordToDelete));
-        }
+        if (passwords.length <= 1) return false;
+        const pwObj = passwords.find(p => p.password === passwordToDelete);
+        if (!pwObj) return false;
+        const success = await api.deletePassword(pwObj.id);
+        if (success) setPasswords(prev => prev.filter(p => p.id !== pwObj.id));
         return success;
     };
-    
-    const value = { isAdmin, passwords, login, logout, addPassword, deletePassword };
 
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return (
+        <AuthContext.Provider value={{ isAdmin, passwords: passwords.map(p => p.password), login, logout, addPassword, deletePassword }}>
+            {children}
+        </AuthContext.Provider>
+    );
 };
+
 
 const useAuth = () => {
     const context = useContext(AuthContext);

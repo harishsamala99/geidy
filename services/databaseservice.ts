@@ -1,115 +1,91 @@
-// --- TYPE DEFINITIONS ---
-type BookingStatus = 'Pending' | 'Approved' | 'Rejected';
+// src/services/databaseservice.ts
+const API_BASE = "http://localhost:8080/api";
 
-interface Booking {
-  id: number;
-  bookingNumber: string;
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  service: string;
+// ----------------- Booking Interfaces -----------------
+export interface Booking {
+  id: number | string;
+  customerName: string;
   date: string;
-  time: string;
-  status: BookingStatus;
+  status: string;
+  [key: string]: any; // for any extra fields
 }
 
-const DB_URL = 'http://localhost:4000';
+// Get all bookings
+export async function getAllBookings(): Promise<Booking[]> {
+  const res = await fetch(`${API_BASE}/bookings`);
+  if (!res.ok) throw new Error("Failed to fetch bookings");
+  return res.json();
+}
 
-// --- BOOKINGS API ---
+// Get a single booking by ID
+export async function getBookingById(bookingId: number | string): Promise<Booking> {
+  const res = await fetch(`${API_BASE}/bookings/${bookingId}`);
+  if (!res.ok) throw new Error("Booking not found");
+  return res.json();
+}
 
-export const getAllBookings = async (): Promise<Booking[]> => {
-  const res = await fetch(`${DB_URL}/bookings`);
-  return await res.json();
-};
-
-export const getBookingByNumber = async (
-  bookingNumber: string
-): Promise<Booking | null> => {
-  const bookings = await getAllBookings();
-  return (
-    bookings.find(
-      (b) => b.bookingNumber.toLowerCase() === bookingNumber.toLowerCase()
-    ) || null
-  );
-};
-
-export const createBooking = async (
-  bookingData: Omit<Booking, 'id' | 'status' | 'bookingNumber'>
-): Promise<Booking> => {
-  const newBooking: Booking = {
-    ...bookingData,
-    id: Date.now(),
-    bookingNumber: `SPK${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-    status: 'Pending',
-  };
-
-  const res = await fetch(`${DB_URL}/bookings`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(newBooking),
+// Create a new booking
+export async function createBooking(data: Booking): Promise<Booking> {
+  const res = await fetch(`${API_BASE}/bookings`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
+  if (!res.ok) throw new Error("Failed to create booking");
+  return res.json();
+}
 
-  return await res.json();
-};
-
-export const updateBookingStatus = async (
-  bookingId: number,
-  status: BookingStatus
-): Promise<Booking | null> => {
-  const res = await fetch(`${DB_URL}/bookings/${bookingId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status }),
+// Update booking by ID
+export async function updateBooking(bookingId: number | string, data: Partial<Booking>): Promise<Booking> {
+  const res = await fetch(`${API_BASE}/bookings/${bookingId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
+  if (!res.ok) throw new Error("Failed to update booking");
+  return res.json();
+}
 
-  if (!res.ok) return null;
-  return await res.json();
-};
-
-export const deleteBooking = async (bookingId: number): Promise<boolean> => {
-  const res = await fetch(`${DB_URL}/bookings/${bookingId}`, {
-    method: 'DELETE',
+// Delete booking by ID
+export async function deleteBooking(bookingId: number | string): Promise<any> {
+  const res = await fetch(`${API_BASE}/bookings/${bookingId}`, {
+    method: "DELETE",
   });
-  return res.ok;
-};
+  if (!res.ok) throw new Error("Failed to delete booking");
+  return res.json();
+}
 
-// --- PASSWORDS API ---
+// ----------------- Password Interfaces -----------------
+export interface Password {
+  id: number | string;
+  username: string;
+  password: string;
+  [key: string]: any; // for any extra fields
+}
 
-export const getPasswords = async (): Promise<string[]> => {
-  const res = await fetch(`${DB_URL}/adminPasswords`);
-  return await res.json();
-};
+// Get all passwords
+export async function getPasswords(): Promise<Password[]> {
+  const res = await fetch(`${API_BASE}/passwords`);
+  if (!res.ok) throw new Error("Failed to fetch passwords");
+  return res.json();
+}
 
-export const addPassword = async (password: string): Promise<boolean> => {
-  const passwords = await getPasswords();
-  if (!password || passwords.includes(password)) return false;
-
-  const res = await fetch(`${DB_URL}/adminPasswords`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(password),
+// Add a new password
+export async function addPassword(data: Password): Promise<Password> {
+  const res = await fetch(`${API_BASE}/passwords`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
+  if (!res.ok) throw new Error("Failed to add password");
+  return res.json();
+}
 
-  return res.ok;
-};
-
-export const deletePassword = async (
-  passwordToDelete: string
-): Promise<boolean> => {
-  const passwords = await getPasswords();
-  const index = passwords.indexOf(passwordToDelete);
-  if (index === -1 || passwords.length <= 1) return false;
-
-  // JSON Server stores passwords as an array, not objects with IDs.
-  // So we overwrite the whole array instead of deleting one by ID.
-  const updatedPasswords = passwords.filter((p) => p !== passwordToDelete);
-
-  const res = await fetch(`${DB_URL}/adminPasswords`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(updatedPasswords),
+// Delete a password by ID
+export async function deletePassword(passwordId: number | string): Promise<any> {
+  const res = await fetch(`${API_BASE}/passwords/${passwordId}`, {
+    method: "DELETE",
   });
-
-  return res.ok;
-};
+  if (!res.ok) throw new Error("Failed to delete password");
+  return res.json();
+}

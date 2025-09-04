@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import type { BookingDetails } from '../types';
 import { ServiceType } from '../types';
-// FIX: Changed import to be explicit with file extension to resolve casing conflict.
-import { CalendarIcon, ClockIcon, HomeIcon, UserIcon, PhoneIcon, PencilIcon, BedIcon, BathIcon } from './icons.tsx';
+// FIX: Removed file extension from import path to allow for correct module resolution and fix casing conflict.
+import { CalendarIcon, ClockIcon, HomeIcon, UserIcon, PhoneIcon, PencilIcon, BedIcon, BathIcon } from './icons';
 
 interface BookingFormProps {
   onSubmit: (details: Omit<BookingDetails, 'bookingNumber'>) => void;
